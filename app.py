@@ -11,7 +11,8 @@ load_dotenv(find_dotenv())
 
 KEY = os.getenv("KEY")
 PASSWORD = os.getenv("PASSWORD")
-client = pymongo.MongoClient(f'mongodb+srv://{KEY}:{PASSWORD}@recipe-mipii.mongodb.net/test?retryWrites=true&w=majority')
+HOST = os.getenv("HOST")
+client = pymongo.MongoClient(f'mongodb+srv://{KEY}:{PASSWORD}@{HOST}/test?retryWrites=true&w=majority')
 db = client['Recipe']
 user = db['Users']
 
@@ -24,29 +25,19 @@ FALSE = {"value": False}
 EXIST = {'value': 'exist'}
 
 
-@app.route('/', methods=['GET', 'POST'])
-def get_recipe(limit=0):
-    if request.method == 'POST':
-        limit = int(request.data) or limit
-        response_data = recipe_data[:limit]
-
-        return jsonify(response_data)
-    else:
-        return "invalid request"
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         users = dict(request.get_json())
+
         if users['email']:
             users['email'] = str(users['email']).lower()
             users['password'] = hashlib.sha1(users['password'].encode()).hexdigest()
-            result = user.find({'email': users['email'], 'password': users['password']}) or False
-            if result.count() is not 0:
-                for record in result:
-                    encoded_jwt = jwt.encode({'password': users['password']}, 'project', algorithm='HS256').decode("UTF-8")
-                    return {"username": record['user_name'], "value": "true", "token": encoded_jwt}
+            result = user.find_one(users) or 0
+            if result is not 0:
+                encoded_jwt = jwt.encode({'password': users['password']}, 'project', algorithm='HS256').decode("UTF-8")
+                return {"username": result['user_name'], "value": "true", "token": encoded_jwt}
             else:
                 return FALSE
     return FALSE
@@ -61,14 +52,14 @@ def signup():
         if users['email']:
             users['email'] = str(users['email']).lower()
             users['password'] = hashlib.sha1(users['password'].encode()).hexdigest()
-            if db['Users'].find({'email': users['email']}).count() > 0:
+            result = user.find_one({'email': users['email']}) or 0
+            if result is not 0:
                 return EXIST
             else:
                 encoded_jwt = jwt.encode({'password': users['password']}, 'project', algorithm='HS256').decode("UTF-8")
-                db['Users'].insert_one(users)
+                user.insert_one(users)
                 return {"username": users['user_name'], "value": "success", "token": encoded_jwt}
-        else:
-            return FALSE
+    return FALSE
 
 
 @app.route('/api/verify-token', methods=['GET', 'POST'])
@@ -80,12 +71,27 @@ def check_api():
             return FALSE
         else:
             token = bytes(token, encoding="UTF-8")
-            password = jwt.decode(jwt=token, key='project', algorithms=['HS256'])
-            if db['Users'].find(password).count() > 0:
+            try:
+                password = jwt.decode(token, "project", algorithms=['HS256'])
+            except:
+                return FALSE
+            result = user.find_one(password) or 0
+            if result is not 0:
                 return TRUE
             else:
                 return FALSE
     return FALSE
+
+
+@app.route('/api/get-recipe/<int:pageno>', methods=['GET', 'POST'])
+def get_cuisine(pageno=None):
+    pageno = int(pageno)
+    if pageno > 0:
+        limit = 21*pageno
+        recipe = recipe_data[(limit-21):limit]
+        recipe.append({"totalSize": len(recipe_data)})
+        return jsonify(recipe)
+    return TRUE
 
 
 if __name__ == '__main__':
