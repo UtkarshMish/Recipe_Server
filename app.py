@@ -37,14 +37,9 @@ RECIPE_SCHEMA = {
 }
 
 
-@app.route("/")
-@app.route("/login")
-@app.route("/signup")
-@app.route("/dashboard")
-@app.route("/browse")
-@app.route("/guide")
-@app.route("/logout")
-def recipe_advisor():
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def recipe_advisor(path=None):
     return render_template("index.html")
 
 
