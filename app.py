@@ -13,8 +13,7 @@ KEY = os.getenv("KEY")
 PASSWORD = os.getenv("PASSWORD")
 HOST = os.getenv("HOST")
 client = pymongo.MongoClient(
-    f"mongodb+srv://{KEY}:{PASSWORD}@{HOST}/test?retryWrites=true&w=majority"
-)
+    f"mongodb+srv://{KEY}:{PASSWORD}@{HOST}/test?retryWrites=true&w=majority")
 db = client["Recipe"]
 user = db["Users"]
 Cuisines = db["Cuisines"]
@@ -50,12 +49,15 @@ def login():
 
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(
+                users["password"].encode()).hexdigest()
             result = user.find_one(users) or 0
             if result is not 0:
-                encoded_jwt = jwt.encode(
-                    {"password": users["password"]}, "project", algorithm="HS256"
-                ).decode("UTF-8")
+                encoded_jwt = jwt.encode({
+                    "password": users["password"]
+                },
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -74,14 +76,17 @@ def signup():
         users["user_name"] = users["user_name"].capitalize()
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(
+                users["password"].encode()).hexdigest()
             result = user.find_one({"email": users["email"]}) or 0
             if result is not 0:
                 return EXIST
             else:
-                encoded_jwt = jwt.encode(
-                    {"password": users["password"]}, "project", algorithm="HS256"
-                ).decode("UTF-8")
+                encoded_jwt = jwt.encode({
+                    "password": users["password"]
+                },
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -119,13 +124,22 @@ def get_cuisine(page_no=None):
         page_size = 6
         limit = page_size * page_no
         recipe_data = [
-            recipe
-            for recipe in Cuisines.find(projection=RECIPE_SCHEMA)
-            .skip(limit - page_size)
-            .limit(page_size)
+            recipe for recipe in Cuisines.find(
+                projection=RECIPE_SCHEMA).skip(limit -
+                                               page_size).limit(page_size)
         ]
         recipe_data.append({"totalSize": Cuisines.count()})
         return jsonify(recipe_data)
+    return FALSE
+
+
+@app.route("/api/recipe/<int:id>", methods=["GET", "POST"])
+def get_recipe(id=None):
+    id = int(id)
+    if id > 0:
+        recipe_data = Cuisines.find_one({"id": id}, projection=RECIPE_SCHEMA)
+        if (recipe_data):
+            return jsonify(recipe_data)
     return FALSE
 
 
