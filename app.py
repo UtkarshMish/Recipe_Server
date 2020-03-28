@@ -1,4 +1,4 @@
-from flask import Flask, json, jsonify, request
+from flask import Flask, json, jsonify, request, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv, find_dotenv
 import hashlib
@@ -37,6 +37,11 @@ RECIPE_SCHEMA = {
 }
 
 
+@app.route("/")
+def recipe_advisor():
+    return render_template("index.html")
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -44,7 +49,8 @@ def login():
 
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(
+                users["password"].encode()).hexdigest()
             result = user.find_one(users) or 0
             if result is not 0:
                 encoded_jwt = jwt.encode(
@@ -68,7 +74,8 @@ def signup():
         users["user_name"] = users["user_name"].capitalize()
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(
+                users["password"].encode()).hexdigest()
             result = user.find_one({"email": users["email"]}) or 0
             if result is not 0:
                 return EXIST
