@@ -56,8 +56,8 @@ def login():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                    "project",
+                    algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -85,8 +85,8 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                    "project",
+                    algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -128,17 +128,17 @@ def get_cuisine(page_no=None):
                 projection=RECIPE_SCHEMA).skip(limit -
                                                page_size).limit(page_size)
         ]
-        recipe_data.append({"totalSize": Cuisines.count()})
+        recipe_data.append({"totalSize": Cuisines.estimated_document_count() + 1})
         return jsonify(recipe_data)
     return FALSE
 
 
-@app.route("/api/recipe/<int:id>", methods=["GET", "POST"])
-def get_recipe(id=None):
-    id = int(id)
-    if id > 0:
-        recipe_data = Cuisines.find_one({"id": id}, projection=RECIPE_SCHEMA)
-        if (recipe_data):
+@app.route("/api/recipe/<recipe_id>", methods=["GET", "POST"])
+def get_recipe(recipe_id=None):
+    recipe_id = int(recipe_id)
+    if recipe_id > 0:
+        recipe_data = Cuisines.find_one({"id": recipe_id}, projection=RECIPE_SCHEMA)
+        if recipe_data:
             return jsonify(recipe_data)
     return FALSE
 
