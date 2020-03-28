@@ -42,15 +42,14 @@ def recipe_advisor():
     return render_template("index.html")
 
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/api/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         users = dict(request.get_json())
 
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(
-                users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
             result = user.find_one(users) or 0
             if result is not 0:
                 encoded_jwt = jwt.encode(
@@ -66,7 +65,7 @@ def login():
     return FALSE
 
 
-@app.route("/signup", methods=["GET", "POST"])
+@app.route("/api/signup", methods=["GET", "POST"])
 def signup():
     print(request.environ["REMOTE_ADDR"])
     if request.method == "POST":
@@ -74,8 +73,7 @@ def signup():
         users["user_name"] = users["user_name"].capitalize()
         if users["email"]:
             users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(
-                users["password"].encode()).hexdigest()
+            users["password"] = hashlib.sha1(users["password"].encode()).hexdigest()
             result = user.find_one({"email": users["email"]}) or 0
             if result is not 0:
                 return EXIST
