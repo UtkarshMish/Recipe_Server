@@ -7,6 +7,7 @@ import jwt
 import os
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 load_dotenv(find_dotenv())
 
 KEY = os.getenv("KEY")
@@ -56,8 +57,8 @@ def login():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -85,8 +86,8 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -128,7 +129,8 @@ def get_cuisine(page_no=0):
                 projection=RECIPE_SCHEMA).skip(limit -
                                                page_size).limit(page_size)
         ]
-        recipe_data.append({"totalSize": Cuisines.estimated_document_count() + 1})
+        recipe_data.append(
+            {"totalSize": Cuisines.estimated_document_count() + 1})
         return jsonify(recipe_data)
     return FALSE
 
@@ -137,12 +139,8 @@ def get_cuisine(page_no=0):
 def get_recipe(recipe_id=0):
     recipe_id = int(recipe_id)
     if recipe_id > 0:
-        recipe_data = Cuisines.find_one({"id": recipe_id}, projection=RECIPE_SCHEMA)
+        recipe_data = Cuisines.find_one({"id": recipe_id},
+                                        projection=RECIPE_SCHEMA)
         if recipe_data:
             return jsonify(recipe_data)
     return FALSE
-
-
-if __name__ == "__main__":
-    CORS(app, resources={r"/*": {"origins": "*"}})
-    app.run(debug=True)
