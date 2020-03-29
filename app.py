@@ -118,7 +118,7 @@ def check_api():
 
 
 @app.route("/api/get-recipe/<int:page_no>", methods=["GET", "POST"])
-def get_cuisine(page_no=None):
+def get_cuisine(page_no=0):
     page_no = int(page_no)
     if page_no > 0:
         page_size = 6
@@ -133,8 +133,8 @@ def get_cuisine(page_no=None):
     return FALSE
 
 
-@app.route("/api/recipe/<recipe_id>", methods=["GET", "POST"])
-def get_recipe(recipe_id=None):
+@app.route("/api/recipe/<int:recipe_id>", methods=["GET", "POST"])
+def get_recipe(recipe_id=0):
     recipe_id = int(recipe_id)
     if recipe_id > 0:
         recipe_data = Cuisines.find_one({"id": recipe_id}, projection=RECIPE_SCHEMA)
