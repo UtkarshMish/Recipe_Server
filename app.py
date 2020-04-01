@@ -5,6 +5,7 @@ import hashlib
 import pymongo
 import jwt
 import os
+import re
 
 app = Flask(__name__)
 load_dotenv(find_dotenv())
@@ -147,6 +148,29 @@ def get_recipe(recipe_id=0):
                                         projection=RECIPE_SCHEMA)
         if recipe_data:
             return jsonify(recipe_data)
+    return FALSE
+
+
+@app.route("/api/search", methods=["GET", "POST"])
+def search():
+    if request.method == "POST":
+        query_request = request.get_json() or 0
+        if query_request != 0:
+            page_no = query_request['page_no']
+            page_size = 6
+            limit = page_size * page_no
+            query_value = "".join([ch for ch in query_request['query'] if ch.isalpha() or ch == ' '])
+            query_result = [cuisine for cuisine in Cuisines.find({'name': {
+                '$regex': f".*{query_value}.*",
+                '$options': 'i'
+            }}, projection=RECIPE_SCHEMA).skip(limit-page_size).limit(page_size)]
+            query_result.append(
+                {"totalSize": Cuisines.find({'name': {
+                    '$regex': f".*{query_value}.*",
+                    '$options': 'i'
+                }}).count()})
+            return jsonify(query_result)
+        return TRUE
     return FALSE
 
 
