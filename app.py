@@ -1,4 +1,4 @@
-from flask import Flask, json, jsonify, request, render_template
+from flask import Flask, json, jsonify, request, render_template, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv, find_dotenv
 import hashlib
@@ -36,6 +36,11 @@ RECIPE_SCHEMA = {
 }
 
 
+@app.route("/robots.txt")
+def robots():
+    return send_file("./static/react/robots.txt")
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def recipe_advisor(path=None):
@@ -52,12 +57,12 @@ def login():
             users["password"] = hashlib.sha1(
                 users["password"].encode()).hexdigest()
             result = user.find_one(users) or 0
-            if result is not 0:
+            if result != 0:
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -79,14 +84,14 @@ def signup():
             users["password"] = hashlib.sha1(
                 users["password"].encode()).hexdigest()
             result = user.find_one({"email": users["email"]}) or 0
-            if result is not 0:
+            if result != 0:
                 return EXIST
             else:
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -110,7 +115,7 @@ def check_api():
             except:
                 return FALSE
             result = user.find_one(password) or 0
-            if result is not 0:
+            if result != 0:
                 return TRUE
             else:
                 return FALSE
@@ -128,7 +133,8 @@ def get_cuisine(page_no=0):
                 projection=RECIPE_SCHEMA).skip(limit -
                                                page_size).limit(page_size)
         ]
-        recipe_data.append({"totalSize": Cuisines.estimated_document_count() + 1})
+        recipe_data.append(
+            {"totalSize": Cuisines.estimated_document_count() + 1})
         return jsonify(recipe_data)
     return FALSE
 
@@ -137,7 +143,8 @@ def get_cuisine(page_no=0):
 def get_recipe(recipe_id=0):
     recipe_id = int(recipe_id)
     if recipe_id > 0:
-        recipe_data = Cuisines.find_one({"id": recipe_id}, projection=RECIPE_SCHEMA)
+        recipe_data = Cuisines.find_one({"id": recipe_id},
+                                        projection=RECIPE_SCHEMA)
         if recipe_data:
             return jsonify(recipe_data)
     return FALSE
