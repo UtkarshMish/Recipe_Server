@@ -62,8 +62,8 @@ def login():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                    "project",
+                    algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -91,8 +91,8 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                    "project",
+                    algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -163,7 +163,7 @@ def search():
             query_result = [cuisine for cuisine in Cuisines.find({'name': {
                 '$regex': f".*{query_value}.*",
                 '$options': 'i'
-            }}, projection=RECIPE_SCHEMA).skip(limit-page_size).limit(page_size)]
+            }}, projection=RECIPE_SCHEMA).skip(limit - page_size).limit(page_size)]
             query_result.append(
                 {"totalSize": Cuisines.find({'name': {
                     '$regex': f".*{query_value}.*",
