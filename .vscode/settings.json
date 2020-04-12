@@ -1,4 +1,4 @@
 {
-  "python.pythonPath": "venv\\Scripts\\python.exe",
+  "python.pythonPath": "c:\\Users\\abhis\\Desktop\\Projects\\College Project\\Recipe_Advizor\\Recipe-Server\\venv\\Scripts\\python.exe",
   "python.formatting.provider": "yapf"
 }
