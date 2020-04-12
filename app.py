@@ -6,6 +6,7 @@ import pymongo
 import jwt
 import os
 import re
+from Recipe_Model import predictor
 
 app = Flask(__name__)
 load_dotenv(find_dotenv())
@@ -62,8 +63,8 @@ def login():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -91,8 +92,8 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -159,18 +160,49 @@ def search():
             page_no = query_request['page_no']
             page_size = 6
             limit = page_size * page_no
-            query_value = "".join([ch for ch in query_request['query'] if ch.isalpha() or ch == ' '])
-            query_result = [cuisine for cuisine in Cuisines.find({'name': {
-                '$regex': f".*{query_value}.*",
-                '$options': 'i'
-            }}, projection=RECIPE_SCHEMA).skip(limit - page_size).limit(page_size)]
-            query_result.append(
-                {"totalSize": Cuisines.find({'name': {
-                    '$regex': f".*{query_value}.*",
-                    '$options': 'i'
-                }}).count()})
+            query_value = "".join([
+                ch for ch in query_request['query']
+                if ch.isalpha() or ch == ' '
+            ])
+            query_result = [
+                cuisine for cuisine in Cuisines.find(
+                    {
+                        'name': {
+                            '$regex': f".*{query_value}.*",
+                            '$options': 'i'
+                        }
+                    },
+                    projection=RECIPE_SCHEMA).skip(limit -
+                                                   page_size).limit(page_size)
+            ]
+            query_result.append({
+                "totalSize":
+                Cuisines.find({
+                    'name': {
+                        '$regex': f".*{query_value}.*",
+                        '$options': 'i'
+                    }
+                }).count()
+            })
             return jsonify(query_result)
         return TRUE
+    return FALSE
+
+
+@app.route("/api/predict", methods=["GET", "POST"])
+def predict_recipe(recipe_id=0):
+    if request.method == 'POST':
+        data = request.get_json()
+        query = data['queryString']
+        if len(query) > 0:
+            query = " ".join(query).lower()
+
+            predicted_id = predictor(query)
+            recipe_data = [recipe for recipe in Cuisines.find({"id": {
+                "$in": predicted_id
+            }}, projection=RECIPE_SCHEMA)]
+            if len(recipe_data) > 0:
+                return jsonify(recipe_data)
     return FALSE
 
 

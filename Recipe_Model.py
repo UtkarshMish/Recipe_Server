@@ -2,14 +2,13 @@
 # coding: utf-8
 
 import json
-import numpy as np
 from pandas import json_normalize, DataFrame, concat
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
 def predictor(query):
-    with open("../data/all_recipes.json") as recipe_data:
+    with open("./data/all_recipes.json") as recipe_data:
         recipes = json.load(recipe_data)
     recipes = json_normalize(recipes)
 
@@ -25,7 +24,7 @@ def predictor(query):
     for i in range(ingredients.size):
         x.append([" ".join(ing) for ing in ingredients.values[i]])
     x = [" ".join(a) for a in x]
-    label = TfidfVectorizer(decode_error="replace", stop_words='english')
+    label = TfidfVectorizer(decode_error="replace", stop_words='english', lowercase=True)
     x = label.fit_transform(x)
     feature_names = label.get_feature_names()
     x = x.todense()
@@ -35,7 +34,7 @@ def predictor(query):
     sim = cosine_similarity(df)
     search_query = label.transform([query])
     cosine_similarities = cosine_similarity(search_query, x).flatten()
-    related_product_indices = cosine_similarities.argsort()[::-1]
+    related_product_indices = cosine_similarities.argsort()[:-6:-1]
     recipe_id = []
     for r in related_product_indices:
         recipe_id.append(recipes.values[r][0])
