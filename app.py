@@ -198,9 +198,12 @@ def predict_recipe(recipe_id=0):
             query = " ".join(query).lower()
 
             predicted_id = predictor(query)
-            recipe_data = [recipe for recipe in Cuisines.find({"id": {
-                "$in": predicted_id
-            }}, projection=RECIPE_SCHEMA)]
+            recipe_data = [
+                recipe for recipe in Cuisines.find(
+                    {"id": {
+                        "$in": predicted_id
+                    }}, projection=RECIPE_SCHEMA)
+            ]
             if len(recipe_data) > 0:
                 return jsonify(recipe_data)
     return FALSE
