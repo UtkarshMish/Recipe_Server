@@ -235,7 +235,6 @@ def user_likes():
             if result != 0 and not user_data['recipe_id']:
                 result_data = db['LikedRecipe'].find_one({"user_id": result['id']}, projection={'_id': False,
                                                                                                 'liked_recipe': True})
-                print(result_data)
                 if result_data:
                     return result_data
                 else:
