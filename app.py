@@ -1,11 +1,13 @@
-from flask import Flask, json, jsonify, request, render_template, send_file
-from flask_cors import CORS
-from dotenv import load_dotenv, find_dotenv
 import hashlib
-import pymongo
-import jwt
 import os
-import re
+
+import jwt
+import pymongo
+from dotenv import load_dotenv, find_dotenv
+from flask import Flask, jsonify, request, render_template, send_file
+from flask_cors import CORS
+from pymongo import ReturnDocument
+
 from Recipe_Model import predictor
 
 app = Flask(__name__)
@@ -36,6 +38,12 @@ RECIPE_SCHEMA = {
     "img_link": 1,
     "total_time": 1,
 }
+
+
+def get_next_sequence(collection, name):
+    return collection.find_one_and_update({name: name}, {'$inc': {'seq': 1}},
+                                          projection={'seq': True, '_id': False},
+                                          return_document=ReturnDocument.AFTER).get("seq")
 
 
 @app.route("/robots.txt")
@@ -92,8 +100,9 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                    "project",
+                    algorithm="HS256").decode("UTF-8")
+                users["id"] = get_next_sequence(db.orgid_counter, 'user_id')
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
