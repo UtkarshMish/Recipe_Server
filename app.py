@@ -218,6 +218,46 @@ def predict_recipe(recipe_id=0):
     return FALSE
 
 
+@app.route("/api/userLikings", methods=["GET", "POST"])
+def user_likes():
+    if request.method == "POST":
+        user_data = request.get_json()
+        password = user_data["token"]
+        if not password:
+            return FALSE
+        else:
+            token = bytes(password, encoding="UTF-8")
+            try:
+                password = jwt.decode(token, "project", algorithms=["HS256"])
+            except:
+                return FALSE
+            result = user.find_one({"user_name": user_data['user'], "password": password['password']}) or 0
+            if result != 0 and not user_data['recipe_id']:
+                result_data = db['LikedRecipe'].find_one({"user_id": result['id']}, projection={'_id': False,
+                                                                                                'liked_recipe': True})
+                print(result_data)
+                if result_data:
+                    return result_data
+                else:
+                    return FALSE
+            if result != 0:
+                operation = '$push' if user_data['liked'] else '$pull'
+                success = db['LikedRecipe'].find_one_and_update({"user_id": result['id']
+                                                                 },
+                                                                {operation: {'liked_recipe': user_data['recipe_id']}},
+                                                                return_document=ReturnDocument.AFTER
+                                                                )
+                if not success:
+                    success = db['LikedRecipe'].insert_one({"user_id": result['id'],
+                                                            "liked_recipe": [user_data['recipe_id']]
+                                                            })
+                if success:
+                    return TRUE
+            else:
+                return FALSE
+    return FALSE
+
+
 if __name__ == "__main__":
     CORS(app, resources={r"/*": {"origins": "*"}})
     app.run(debug=True)
