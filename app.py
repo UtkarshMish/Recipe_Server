@@ -1,7 +1,6 @@
 import hashlib
-import os
-
 import jwt
+import os
 import pymongo
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, jsonify, request, render_template, send_file
@@ -49,6 +48,11 @@ def get_next_sequence(collection, name):
 @app.route("/robots.txt")
 def robots():
     return send_file("./static/react/robots.txt")
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    return send_file("./sitemap.xml")
 
 
 @app.route("/", defaults={"path": ""})
