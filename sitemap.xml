@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.google.com/schemas/sitemap/0.84">
+    <url>
+        <loc>http://recipe-advisor.team/</loc>
+        <changefreq>weekly</changefreq>
+    </url>
+
+    <url>
+        <loc>http://recipe-advisor.team/login</loc>
+        <changefreq>weekly</changefreq>
+    </url>
+
+    <url>
+        <loc>http://recipe-advisor.team/browse</loc>
+        <changefreq>weekly</changefreq>
+    </url>
+
+    <url>
+        <loc>http://recipe-advisor.team/guide</loc>
+        <changefreq>weekly</changefreq>
+    </url>
+
+</urlset>
+

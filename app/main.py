@@ -1,14 +1,15 @@
-from flask import Flask, json, jsonify, request, render_template, send_file
-from flask_cors import CORS
-from dotenv import load_dotenv, find_dotenv
 import hashlib
-import pymongo
 import jwt
 import os
-import re
+import pymongo
+from dotenv import load_dotenv, find_dotenv
+from flask import Flask, jsonify, request, render_template, send_file
+from flask_cors import CORS
+from pymongo import ReturnDocument
+
+from Recipe_Model import predictor
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
 load_dotenv(find_dotenv())
 
 KEY = os.getenv("KEY")
@@ -38,9 +39,30 @@ RECIPE_SCHEMA = {
 }
 
 
+def get_next_sequence(collection, name):
+    return collection.find_one_and_update(
+        {
+            name: name
+        }, {
+            '$inc': {
+                'seq': 1
+            }
+        },
+        projection={
+            'seq': True,
+            '_id': False
+        },
+        return_document=ReturnDocument.AFTER).get("seq")
+
+
 @app.route("/robots.txt")
 def robots():
     return send_file("./static/react/robots.txt")
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    return send_file("./sitemap.xml")
 
 
 @app.route("/", defaults={"path": ""})
@@ -63,8 +85,8 @@ def login():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -92,8 +114,9 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
+                users["id"] = get_next_sequence(db.orgid_counter, 'user_id')
                 user.insert_one(users)
                 return {
                     "username": users["user_name"],
@@ -160,18 +183,101 @@ def search():
             page_no = query_request['page_no']
             page_size = 6
             limit = page_size * page_no
-            query_value = "".join([ch for ch in query_request['query'] if ch.isalpha() or ch == ' '])
-            query_result = [cuisine for cuisine in Cuisines.find({'name': {
-                '$regex': f".*{query_value}.*",
-                '$options': 'i'
-            }}, projection=RECIPE_SCHEMA).skip(limit - page_size).limit(page_size)]
-            query_result.append(
-                {"totalSize": Cuisines.find({'name': {
-                    '$regex': f".*{query_value}.*",
-                    '$options': 'i'
-                }}).count()})
+            query_value = "".join([
+                ch for ch in query_request['query']
+                if ch.isalpha() or ch == ' '
+            ])
+            query_result = [
+                cuisine for cuisine in Cuisines.find(
+                    {
+                        'name': {
+                            '$regex': f".*{query_value}.*",
+                            '$options': 'i'
+                        }
+                    },
+                    projection=RECIPE_SCHEMA).skip(limit -
+                                                   page_size).limit(page_size)
+            ]
+            query_result.append({
+                "totalSize":
+                Cuisines.find({
+                    'name': {
+                        '$regex': f".*{query_value}.*",
+                        '$options': 'i'
+                    }
+                }).count()
+            })
             return jsonify(query_result)
         return TRUE
+    return FALSE
+
+
+@app.route("/api/predict", methods=["GET", "POST"])
+def predict_recipe(recipe_id=0):
+    if request.method == 'POST':
+        data = request.get_json()
+        query = data['queryString']
+        if len(query) > 0:
+            query = " ".join(query).lower()
+
+            predicted_id = predictor(query)
+            recipe_data = [
+                recipe for recipe in Cuisines.find(
+                    {"id": {
+                        "$in": predicted_id
+                    }}, projection=RECIPE_SCHEMA)
+            ]
+            if len(recipe_data) > 0:
+                return jsonify(recipe_data)
+    return FALSE
+
+
+@app.route("/api/userLikings", methods=["GET", "POST"])
+def user_likes():
+    if request.method == "POST":
+        user_data = request.get_json()
+        password = user_data["token"]
+        if not password:
+            return FALSE
+        else:
+            token = bytes(password, encoding="UTF-8")
+            try:
+                password = jwt.decode(token, "project", algorithms=["HS256"])
+            except:
+                return FALSE
+            result = user.find_one({
+                "user_name": user_data['user'],
+                "password": password['password']
+            }) or 0
+            if result != 0 and not user_data['recipe_id']:
+                result_data = db['LikedRecipe'].find_one(
+                    {"user_id": result['id']},
+                    projection={
+                        '_id': False,
+                        'liked_recipe': True
+                    })
+                if result_data:
+                    return result_data
+                else:
+                    return FALSE
+            if result != 0:
+                operation = '$push' if user_data['liked'] else '$pull'
+                success = db['LikedRecipe'].find_one_and_update(
+                    {"user_id": result['id']},
+                    {operation: {
+                        'liked_recipe': user_data['recipe_id']
+                    }},
+                    return_document=ReturnDocument.AFTER)
+                if not success:
+                    success = db['LikedRecipe'].insert_one({
+                        "user_id":
+                        result['id'],
+                        "liked_recipe": [user_data['recipe_id']]
+                    })
+                if success:
+                    return TRUE
+            else:
+                return FALSE
     return FALSE
 
 
