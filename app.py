@@ -1,13 +1,16 @@
 import hashlib
-import jwt
 import os
+
+import jwt
 import pymongo
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, jsonify, request, render_template, send_file
 from flask_cors import CORS
 from pymongo import ReturnDocument
 
-from Recipe_Model import predictor
+from Recipe_Model import Recommender
+
+# import json
 
 app = Flask(__name__)
 load_dotenv(find_dotenv())
@@ -40,9 +43,19 @@ RECIPE_SCHEMA = {
 
 
 def get_next_sequence(collection, name):
-    return collection.find_one_and_update({name: name}, {'$inc': {'seq': 1}},
-                                          projection={'seq': True, '_id': False},
-                                          return_document=ReturnDocument.AFTER).get("seq")
+    return collection.find_one_and_update(
+        {
+            name: name
+        }, {
+            '$inc': {
+                'seq': 1
+            }
+        },
+        projection={
+            'seq': True,
+            '_id': False
+        },
+        return_document=ReturnDocument.AFTER).get("seq")
 
 
 @app.route("/robots.txt")
@@ -209,8 +222,8 @@ def predict_recipe(recipe_id=0):
         query = data['queryString']
         if len(query) > 0:
             query = " ".join(query).lower()
-
-            predicted_id = predictor(query)
+            recipe = Recommender(query)
+            predicted_id = recipe.predictor()
             recipe_data = [
                 recipe for recipe in Cuisines.find(
                     {"id": {
@@ -235,25 +248,35 @@ def user_likes():
                 password = jwt.decode(token, "project", algorithms=["HS256"])
             except:
                 return FALSE
-            result = user.find_one({"user_name": user_data['user'], "password": password['password']}) or 0
+            result = user.find_one({
+                "user_name": user_data['user'],
+                "password": password['password']
+            }) or 0
             if result != 0 and not user_data['recipe_id']:
-                result_data = db['LikedRecipe'].find_one({"user_id": result['id']}, projection={'_id': False,
-                                                                                                'liked_recipe': True})
+                result_data = db['LikedRecipe'].find_one(
+                    {"user_id": result['id']},
+                    projection={
+                        '_id': False,
+                        'liked_recipe': True
+                    })
                 if result_data:
                     return result_data
                 else:
                     return FALSE
             if result != 0:
                 operation = '$push' if user_data['liked'] else '$pull'
-                success = db['LikedRecipe'].find_one_and_update({"user_id": result['id']
-                                                                 },
-                                                                {operation: {'liked_recipe': user_data['recipe_id']}},
-                                                                return_document=ReturnDocument.AFTER
-                                                                )
+                success = db['LikedRecipe'].find_one_and_update(
+                    {"user_id": result['id']},
+                    {operation: {
+                        'liked_recipe': user_data['recipe_id']
+                    }},
+                    return_document=ReturnDocument.AFTER)
                 if not success:
-                    success = db['LikedRecipe'].insert_one({"user_id": result['id'],
-                                                            "liked_recipe": [user_data['recipe_id']]
-                                                            })
+                    success = db['LikedRecipe'].insert_one({
+                        "user_id":
+                            result['id'],
+                        "liked_recipe": [user_data['recipe_id']]
+                    })
                 if success:
                     return TRUE
             else:
@@ -262,5 +285,8 @@ def user_likes():
 
 
 if __name__ == "__main__":
+    # with open("./data/all_recipes.json") as recipe_data:
+    #     recipes = json.load(recipe_data)
+    #     Cuisines.insert_many([recipe for recipe in recipes])
     CORS(app, resources={r"/*": {"origins": "*"}})
     app.run(debug=True)
