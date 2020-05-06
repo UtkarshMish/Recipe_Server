@@ -216,14 +216,15 @@ def search():
 
 
 @app.route("/api/predict", methods=["GET", "POST"])
-def predict_recipe(recipe_id=0):
+def predict_recipe():
     if request.method == 'POST':
         data = request.get_json()
         query = data['queryString']
         if len(query) > 0:
             query = " ".join(query).lower()
-            recipe = Recommender(query)
-            predicted_id = recipe.predictor()
+            cuisine_list = [cuisine for cuisine in Cuisines.find(projection=RECIPE_SCHEMA)]
+            recipe = Recommender(cuisine_list, query)
+            predicted_id = recipe.guide_predictor()
             recipe_data = [
                 recipe for recipe in Cuisines.find(
                     {"id": {
