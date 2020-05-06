@@ -117,8 +117,8 @@ def signup():
                 encoded_jwt = jwt.encode({
                     "password": users["password"]
                 },
-                    "project",
-                    algorithm="HS256").decode("UTF-8")
+                                         "project",
+                                         algorithm="HS256").decode("UTF-8")
                 users["id"] = get_next_sequence(db.orgid_counter, 'user_id')
                 user.insert_one(users)
                 return {
@@ -222,7 +222,9 @@ def predict_recipe():
         query = data['queryString']
         if len(query) > 0:
             query = " ".join(query).lower()
-            cuisine_list = [cuisine for cuisine in Cuisines.find(projection=RECIPE_SCHEMA)]
+            cuisine_list = [
+                cuisine for cuisine in Cuisines.find(projection=RECIPE_SCHEMA)
+            ]
             recipe = Recommender(cuisine_list, query)
             predicted_id = recipe.guide_predictor()
             recipe_data = [
@@ -275,7 +277,7 @@ def user_likes():
                 if not success:
                     success = db['LikedRecipe'].insert_one({
                         "user_id":
-                            result['id'],
+                        result['id'],
                         "liked_recipe": [user_data['recipe_id']]
                     })
                 if success:
