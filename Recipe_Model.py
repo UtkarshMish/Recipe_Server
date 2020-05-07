@@ -2,6 +2,9 @@
 # coding: utf-8
 
 from functools import reduce
+import sys
+
+use_openmp = False
 
 import numpy as np
 from lightfm import LightFM
