@@ -34,11 +34,11 @@ def vectorizer(matrix):
 
 class Recommender:
     query = ""
-    
+
     def __init__(self, cuisine_list, query):
         self.query = query
         self.recipes = json_normalize(cuisine_list)
-    
+
     def form_matrix(self):
         ingredients = []
         matrix = []
@@ -50,13 +50,13 @@ class Recommender:
             matrix.append([" ".join(ing) for ing in ingredients.values[i]])
         matrix = [" ".join(a) for a in matrix]
         return matrix
-    
+
     def cosine_sim(self, matrix):
         matrix, feature_names, label = vectorizer(matrix)
         search_query = label.transform([self.query])
         cosine_similarities = cosine_similarity(search_query, matrix).flatten()
         return matrix, cosine_similarities.argsort()[:-5:-1], feature_names
-    
+
     def guide_predictor(self):
         recipe_id = []
         # df = DataFrame(x, columns=feature_names) # MAKE RECIPE INGREDIENT AS DATA FRAME
@@ -66,7 +66,7 @@ class Recommender:
         for r in related_product_indices:
             recipe_id.append(self.recipes.values[r][0])
         return recipe_id
-    
+
     def user_like_recommend(self):
         model_recipe = LightFM(learning_schedule='adadelta', loss='warp')
         matrix = self.form_matrix()
@@ -74,7 +74,9 @@ class Recommender:
         df = DataFrame(matrix, columns=feature_names)
         df.insert(0, "id", self.recipes['id'])
         data = coo_matrix(df, dtype=np.float32)
-        model_recipe.fit(data, epochs=30, num_threads=2)
+        model_recipe.fit(data, epochs=30)
         scores = hybrid_recommender(model_recipe, data, self.query)
         x = df['id'][np.argsort(-scores)][:-5:-1]
-        return DataFrame(self.recipes.values[x], columns=self.recipes.columns).to_dict(orient='records')
+        return DataFrame(
+            self.recipes.values[x],
+            columns=self.recipes.columns).to_dict(orient='records')
