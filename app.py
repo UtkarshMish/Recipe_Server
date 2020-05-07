@@ -58,6 +58,22 @@ def get_next_sequence(collection, name):
         return_document=ReturnDocument.AFTER).get("seq")
 
 
+def get_token(users):
+    encoded_jwt = jwt.encode({
+        "password": users["password"]
+    },
+        "project",
+        algorithm="HS256").decode("UTF-8")
+    
+    return encoded_jwt
+
+
+def get_recommend(cuisines, result_data):
+    recommender = Recommender(cuisines,
+                              result_data)
+    return recommender.user_like_recommend()
+
+
 @app.route("/robots.txt")
 def robots():
     return send_file("./static/react/robots.txt")
@@ -83,13 +99,9 @@ def login():
             users["email"] = str(users["email"]).lower()
             users["password"] = hashlib.sha1(
                 users["password"].encode()).hexdigest()
-            result = user.find_one(users) or 0
-            if result != 0:
-                encoded_jwt = jwt.encode({
-                    "password": users["password"]
-                },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+            result = user.find_one(users)
+            if result:
+                encoded_jwt = get_token(users)
                 return {
                     "username": result["user_name"],
                     "value": "true",
@@ -114,11 +126,7 @@ def signup():
             if result != 0:
                 return EXIST
             else:
-                encoded_jwt = jwt.encode({
-                    "password": users["password"]
-                },
-                                         "project",
-                                         algorithm="HS256").decode("UTF-8")
+                encoded_jwt = get_token(users)
                 users["id"] = get_next_sequence(db.orgid_counter, 'user_id')
                 user.insert_one(users)
                 return {
@@ -255,14 +263,19 @@ def user_likes():
                 "user_name": user_data['user'],
                 "password": password['password']
             }) or 0
-            if result != 0 and not user_data['recipe_id']:
+            if result != 0 and user_data['recipe_id'] is None:
                 result_data = db['LikedRecipe'].find_one(
                     {"user_id": result['id']},
                     projection={
                         '_id': False,
                         'liked_recipe': True
                     })
+    
                 if result_data:
+                    cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
+                    liked = result_data['liked_recipe']
+                    result_data['liked_recipe'] = [recipe for recipe in cuisines if recipe['id'] in liked]
+                    result_data['recommendations'] = get_recommend(cuisines, liked)
                     return result_data
                 else:
                     return FALSE
