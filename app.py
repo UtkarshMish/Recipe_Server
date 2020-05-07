@@ -62,15 +62,14 @@ def get_token(users):
     encoded_jwt = jwt.encode({
         "password": users["password"]
     },
-        "project",
-        algorithm="HS256").decode("UTF-8")
-    
+                             "project",
+                             algorithm="HS256").decode("UTF-8")
+
     return encoded_jwt
 
 
 def get_recommend(cuisines, result_data):
-    recommender = Recommender(cuisines,
-                              result_data)
+    recommender = Recommender(cuisines, result_data)
     return recommender.user_like_recommend()
 
 
@@ -270,12 +269,18 @@ def user_likes():
                         '_id': False,
                         'liked_recipe': True
                     })
-    
+
                 if result_data:
-                    cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
+                    cuisines = list(
+                        Cuisines.find(projection={
+                            '_id': False
+                        }).sort('id'))
                     liked = result_data['liked_recipe']
-                    result_data['liked_recipe'] = [recipe for recipe in cuisines if recipe['id'] in liked]
-                    result_data['recommendations'] = get_recommend(cuisines, liked)
+                    result_data['liked_recipe'] = [
+                        recipe for recipe in cuisines if recipe['id'] in liked
+                    ]
+                    result_data['recommendations'] = get_recommend(
+                        cuisines, liked)
                     return result_data
                 else:
                     return FALSE
