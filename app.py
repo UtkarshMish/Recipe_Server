@@ -310,4 +310,4 @@ if __name__ == "__main__":
     #     recipes = json.load(recipe_data)
     #     Cuisines.insert_many([recipe for recipe in recipes])
     CORS(app, resources={r"/*": {"origins": "*"}})
-    app.run(debug=True)
+    app.run()
