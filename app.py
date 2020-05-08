@@ -245,6 +245,59 @@ def predict_recipe():
     return FALSE
 
 
+@app.route("/api/userLikings", methods=["GET", "POST"])
+def user_likes():
+    if request.method == "POST":
+        user_data = request.get_json()
+        password = user_data["token"]
+        if not password:
+            return FALSE
+        else:
+            token = bytes(password, encoding="UTF-8")
+            try:
+                password = jwt.decode(token, "project", algorithms=["HS256"])
+            except:
+                return FALSE
+            result = user.find_one({
+                "user_name": user_data['user'],
+                "password": password['password']
+            }) or 0
+            if result != 0 and user_data['recipe_id'] is None:
+                result_data = db['LikedRecipe'].find_one(
+                    {"user_id": result['id']},
+                    projection={
+                        '_id': False,
+                        'liked_recipe': True
+                    })
+
+                if result_data['liked_recipe'] and user_data['recommendation']:
+                    result_data = liked_response(result_data)
+                    return result_data
+                elif result_data:
+                    return result_data
+                else:
+                    return FALSE
+            if result != 0:
+                operation = '$push' if user_data['liked'] else '$pull'
+                success = db['LikedRecipe'].find_one_and_update(
+                    {"user_id": result['id']},
+                    {operation: {
+                        'liked_recipe': user_data['recipe_id']
+                    }},
+                    return_document=ReturnDocument.AFTER)
+                if not success:
+                    success = db['LikedRecipe'].insert_one({
+                        "user_id":
+                        result['id'],
+                        "liked_recipe": [user_data['recipe_id']]
+                    })
+                if success:
+                    return TRUE
+            else:
+                return FALSE
+    return FALSE
+
+
 def liked_response(result_data):
     cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
     liked = result_data['liked_recipe']
