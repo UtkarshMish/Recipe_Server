@@ -276,7 +276,7 @@ def user_likes():
                 elif result_data:
                     return result_data
                 else:
-                    return FALSE
+                    return {"liked_recipe": []}
             if result != 0:
                 operation = '$push' if user_data['liked'] else '$pull'
                 success = db['LikedRecipe'].find_one_and_update(
@@ -289,7 +289,8 @@ def user_likes():
                     success = db['LikedRecipe'].insert_one({
                         "user_id":
                         result['id'],
-                        "liked_recipe": [user_data['recipe_id']]
+                        "liked_recipe":
+                        int([user_data['recipe_id']])
                     })
                 if success:
                     return TRUE
