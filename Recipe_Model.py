@@ -13,7 +13,7 @@ def hybrid_recommender(model, data, recipe_ids):
     scores = list()
     n_recipe, n_ing = data.shape
     for reci_id in recipe_ids:
-        scores.append(model.predict(reci_id, np.arange(n_ing), num_threads=2))
+        scores.append(model.predict(reci_id, np.arange(n_ing), num_threads=4))
     scores = reduce(lambda a, b: a + b, scores)
     return scores
 
@@ -72,7 +72,7 @@ class Recommender:
         df = DataFrame(matrix, columns=feature_names)
         df.insert(0, "id", self.recipes['id'])
         data = coo_matrix(df, dtype=np.float32)
-        model_recipe.fit(data, epochs=100, num_threads=2)
+        model_recipe.fit(data, epochs=30, num_threads=4)
         scores = hybrid_recommender(model_recipe, data, self.query)
         x = df['id'][np.argsort(-scores)][:-5:-1]
         return DataFrame(

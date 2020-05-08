@@ -270,17 +270,10 @@ def user_likes():
                         'liked_recipe': True
                     })
 
-                if result_data:
-                    cuisines = list(
-                        Cuisines.find(projection={
-                            '_id': False
-                        }).sort('id'))
-                    liked = result_data['liked_recipe']
-                    result_data['liked_recipe'] = [
-                        recipe for recipe in cuisines if recipe['id'] in liked
-                    ]
-                    result_data['recommendations'] = get_recommend(
-                        cuisines, liked)
+                if result_data['liked_recipe'] and user_data['recommendation']:
+                    result_data = liked_response(result_data)
+                    return result_data
+                elif result_data:
                     return result_data
                 else:
                     return FALSE
@@ -295,7 +288,7 @@ def user_likes():
                 if not success:
                     success = db['LikedRecipe'].insert_one({
                         "user_id":
-                        result['id'],
+                            result['id'],
                         "liked_recipe": [user_data['recipe_id']]
                     })
                 if success:
@@ -305,8 +298,21 @@ def user_likes():
     return FALSE
 
 
-if __name__ == "__main__":
+def liked_response(result_data):
+    cuisines = list(
+        Cuisines.find(projection={
+            '_id': False
+        }).sort('id'))
+    liked = result_data['liked_recipe']
+    result_data['liked_recipe'] = [
+        recipe for recipe in cuisines if recipe['id'] in liked
+    ]
+    result_data['recommendations'] = get_recommend(
+        cuisines, liked)
+    return result_data
 
+
+if __name__ == "__main__":
     # with open("./data/all_recipes.json") as recipe_data:
     #     recipes = json.load(recipe_data)
     #     Cuisines.insert_many([recipe for recipe in recipes])
