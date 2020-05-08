@@ -276,7 +276,7 @@ def user_likes():
                 elif result_data:
                     return result_data
                 else:
-                    return FALSE
+                    return {"liked_recipe": []}
             if result != 0:
                 operation = '$push' if user_data['liked'] else '$pull'
                 success = db['LikedRecipe'].find_one_and_update(
@@ -288,8 +288,9 @@ def user_likes():
                 if not success:
                     success = db['LikedRecipe'].insert_one({
                         "user_id":
-                            result['id'],
-                        "liked_recipe": [user_data['recipe_id']]
+                        result['id'],
+                        "liked_recipe":
+                        int([user_data['recipe_id']])
                     })
                 if success:
                     return TRUE
@@ -299,16 +300,12 @@ def user_likes():
 
 
 def liked_response(result_data):
-    cuisines = list(
-        Cuisines.find(projection={
-            '_id': False
-        }).sort('id'))
+    cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
     liked = result_data['liked_recipe']
     result_data['liked_recipe'] = [
         recipe for recipe in cuisines if recipe['id'] in liked
     ]
-    result_data['recommendations'] = get_recommend(
-        cuisines, liked)
+    result_data['recommendations'] = get_recommend(cuisines, liked)
     return result_data
 
 
