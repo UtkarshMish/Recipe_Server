@@ -299,7 +299,7 @@ def user_likes():
 
 def liked_response(result_data):
     cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
-    liked = result_data['liked_recipe']
+    liked = result_data['liked_recipe'] or []
     result_data['liked_recipe'] = [
         recipe for recipe in cuisines if recipe['id'] in liked
     ]

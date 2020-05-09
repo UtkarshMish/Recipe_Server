@@ -7,11 +7,15 @@ from pandas import json_normalize, DataFrame
 from scipy.sparse import coo_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from random import randint
 
 
 def hybrid_recommender(model, data, recipe_ids):
     scores = list()
     n_recipe, n_ing = data.shape
+    if len(recipe_ids) == 0:
+        recipe_ids = [randint(1, n_recipe)]
+
     for reci_id in recipe_ids:
         scores.append(model.predict(reci_id, np.arange(n_ing), num_threads=4))
     scores = reduce(lambda a, b: a + b, scores)
