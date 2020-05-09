@@ -9,4 +9,6 @@ WORKDIR /app
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5000
 ENV NAME OpentoAll
+RUN export FLASK_APP=app.py
+RUN export FLASK_ENV=production
 CMD ["python","app.py"]
