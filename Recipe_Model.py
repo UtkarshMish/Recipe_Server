@@ -45,7 +45,7 @@ class Recommender:
         ingredients = []
         matrix = []
         for ing in self.recipes['ingredients']:
-            ingredients.append({"name": [i['name'] for i in ing]})
+            ingredients.append({"name": [i for i in ing]})
         ingredients = DataFrame(ingredients)
         # ### Analyzing recipe
         for i in range(ingredients.size):
@@ -76,7 +76,7 @@ class Recommender:
         df = DataFrame(matrix, columns=feature_names)
         df.insert(0, "id", self.recipes['id'])
         data = coo_matrix(df, dtype=np.float32)
-        model_recipe.fit(data, epochs=30, num_threads=4)
+        model_recipe.fit(data, epochs=20, num_threads=4)
         scores = hybrid_recommender(model_recipe, data, self.query)
         x = df['id'][np.argsort(-scores)][:-5:-1]
         return DataFrame(

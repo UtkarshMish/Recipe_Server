@@ -308,7 +308,7 @@ def liked_response(result_data):
 
 
 if __name__ == "__main__":
-    # with open("./data/all_recipes.json") as recipe_data:
+    # with open("./data/cleaned_data.json") as recipe_data:
     #     recipes = json.load(recipe_data)
     #     Cuisines.insert_many([recipe for recipe in recipes])
     CORS(app, resources={r"/*": {"origins": "*"}})
