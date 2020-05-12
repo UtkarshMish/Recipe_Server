@@ -70,15 +70,15 @@ class Recommender:
         return recipe_id
 
     def user_like_recommend(self):
-        model_recipe = LightFM(learning_schedule='adadelta', loss='warp')
+        model_recipe = LightFM(learning_schedule='adadelta',
+                               learning_rate=2, loss='warp-kos')
         matrix = self.form_matrix()
         matrix, feature_names, label = vectorizer(matrix)
         df = DataFrame(matrix, columns=feature_names)
-        df.insert(0, "id", self.recipes['id'])
-        data = coo_matrix(df, dtype=np.float32)
-        model_recipe.fit(data, epochs=20, num_threads=4)
+        df.insert(0, "id", self.recipes['id']._values)
+        data = coo_matrix(df, dtype=np.float32).transpose()
+        model_recipe.fit(data, epochs=3, num_threads=4)
         scores = hybrid_recommender(model_recipe, data, self.query)
-        x = df['id'][np.argsort(-scores)][:-5:-1]
         return DataFrame(
-            self.recipes.values[x],
+            self.recipes.values[np.argsort(-scores)[:-6:-1]],
             columns=self.recipes.columns).to_dict(orient='records')
