@@ -62,8 +62,8 @@ def get_token(users):
     encoded_jwt = jwt.encode({
         "password": users["password"]
     },
-                             "project",
-                             algorithm="HS256").decode("UTF-8")
+        "project",
+        algorithm="HS256").decode("UTF-8")
 
     return encoded_jwt
 
