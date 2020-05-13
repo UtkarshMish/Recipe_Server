@@ -1,6 +1,6 @@
 from functools import reduce
 import sys
-
+import pickle
 import numpy as np
 from lightfm import LightFM
 from pandas import json_normalize, DataFrame
@@ -12,14 +12,13 @@ from random import randint
 
 def hybrid_recommender(model, data, recipe_ids):
     scores = list()
-    n_recipe, n_ing = data.shape
     if len(recipe_ids) == 0:
-        recipe_ids = [randint(1, n_recipe)]
+        recipe_ids = [randint(1, data)]
 
     for reci_id in recipe_ids:
-        scores.append(model.predict(reci_id, np.arange(n_ing), num_threads=4))
-    scores = reduce(lambda a, b: a + b, scores)
-    return scores
+        scores.append(model.predict(reci_id, np.arange(data), num_threads=4))
+    scores = np.array([min(i) for i in zip(*scores)])
+    return np.argsort(-scores)[:-5:-1]
 
 
 def vectorizer(matrix):
@@ -70,15 +69,22 @@ class Recommender:
         return recipe_id
 
     def user_like_recommend(self):
-        model_recipe = LightFM(learning_schedule='adadelta',
-                               learning_rate=2, loss='warp-kos')
-        matrix = self.form_matrix()
-        matrix, feature_names, label = vectorizer(matrix)
-        df = DataFrame(matrix, columns=feature_names)
-        df.insert(0, "id", self.recipes['id']._values)
-        data = coo_matrix(df, dtype=np.float32).transpose()
-        model_recipe.fit(data, epochs=3, num_threads=4)
-        scores = hybrid_recommender(model_recipe, data, self.query)
+        self.query = [index for index, item in enumerate(
+            self.recipes['id']._values) if item in self.query]
+        try:
+            with open("models/recipe_model.pickle", "rb") as handle:
+                model_recipe = pickle.load(handle)
+        except FileNotFoundError as f:
+            model_recipe = LightFM(
+                learning_schedule='adadelta', loss='warp-kos')
+            matrix = self.form_matrix()
+            matrix, feature_names, label = vectorizer(matrix)
+            df = DataFrame(matrix, columns=feature_names)
+            df.insert(0, "id", self.recipes['id'])
+            data = coo_matrix(df, dtype=np.float32)
+            model_recipe.fit(data, epochs=30, num_threads=4)
+        scores = hybrid_recommender(
+            model_recipe, self.recipes["id"].size, self.query)
         return DataFrame(
-            self.recipes.values[np.argsort(-scores)[:-6:-1]],
+            self.recipes.values[scores],
             columns=self.recipes.columns).to_dict(orient='records')
