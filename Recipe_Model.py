@@ -17,8 +17,8 @@ def hybrid_recommender(model, data, recipe_ids):
 
     for reci_id in recipe_ids:
         scores.append(model.predict(reci_id, np.arange(data), num_threads=4))
-    scores = np.array([min(i) for i in zip(*scores)])
-    return np.argsort(-scores)[:-5:-1]
+    scores = np.array([max(i) for i in zip(*scores)])
+    return [i for i in np.argsort(-scores)[:-5:-1] if i not in recipe_ids]
 
 
 def vectorizer(matrix):
