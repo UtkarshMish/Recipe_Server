@@ -17,8 +17,8 @@ def hybrid_recommender(model, data, recipe_ids):
 
     for reci_id in recipe_ids:
         scores.append(model.predict(reci_id, np.arange(data), num_threads=4))
-    scores = np.array([min(i) for i in zip(*scores)])
-    return np.argsort(-scores)[:-5:-1]
+    scores = np.array([max(i) for i in zip(*scores)])
+    return [i for i in np.argsort(-scores)[:-5:-1] if i not in recipe_ids]
 
 
 def vectorizer(matrix):
@@ -69,22 +69,24 @@ class Recommender:
         return recipe_id
 
     def user_like_recommend(self):
-        self.query = [index for index, item in enumerate(
-            self.recipes['id']._values) if item in self.query]
+        self.query = [
+            index for index, item in enumerate(self.recipes['id']._values)
+            if item in self.query
+        ]
         try:
             with open("models/recipe_model.pickle", "rb") as handle:
                 model_recipe = pickle.load(handle)
         except FileNotFoundError as f:
-            model_recipe = LightFM(
-                learning_schedule='adadelta', loss='warp-kos')
+            model_recipe = LightFM(learning_schedule='adadelta',
+                                   loss='warp-kos')
             matrix = self.form_matrix()
             matrix, feature_names, label = vectorizer(matrix)
             df = DataFrame(matrix, columns=feature_names)
             df.insert(0, "id", self.recipes['id'])
             data = coo_matrix(df, dtype=np.float32)
             model_recipe.fit(data, epochs=30, num_threads=4)
-        scores = hybrid_recommender(
-            model_recipe, self.recipes["id"].size, self.query)
+        scores = hybrid_recommender(model_recipe, self.recipes["id"].size,
+                                    self.query)
         return DataFrame(
             self.recipes.values[scores],
             columns=self.recipes.columns).to_dict(orient='records')
