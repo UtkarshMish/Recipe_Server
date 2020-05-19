@@ -245,6 +245,16 @@ def predict_recipe():
     return FALSE
 
 
+@app.route("/api/submit-query", methods=["GET", "POST"])
+def submit_query():
+    if request.method == 'POST':
+        data = request.get_json()
+        result = db['UserQuery'].insert_one(data)
+        if result != None:
+            return TRUE
+    return FALSE
+
+
 @app.route("/api/userLikings", methods=["GET", "POST"])
 def user_likes():
     if request.method == "POST":
