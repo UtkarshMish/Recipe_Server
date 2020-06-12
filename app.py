@@ -279,6 +279,11 @@ def user_likes():
                         '_id': False,
                         'liked_recipe': True
                     })
+                if not result_data:
+                    result_data = {
+                        'id': result['id'],
+                        'liked_recipe': []
+                    }
                 if result_data is not None and user_data['recommendation']:
                     result_data = liked_response(result_data)
                     return result_data
