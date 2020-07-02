@@ -11,7 +11,7 @@
     </url>
 
     <url>
-        <loc>http://recipe-advisor.team/browse</loc>
+        <loc>http://recipe-advisor.team/browse/</loc>
         <changefreq>weekly</changefreq>
     </url>
 
@@ -19,6 +19,9 @@
         <loc>http://recipe-advisor.team/guide</loc>
         <changefreq>weekly</changefreq>
     </url>
-
+    <url>
+        <loc>http://recipe-advisor.team/browse/recipe/</loc>
+        <changefreq>weekly</changefreq>
+    </url>
 </urlset>
 
