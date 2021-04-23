@@ -327,4 +327,6 @@ if __name__ == "__main__":
     #     recipes = json.load(recipe_data)
     #     Cuisines.insert_many([recipe for recipe in recipes])
     CORS(app, resources={r"/*": {"origins": "*"}})
-    app.run(host='0.0.0.0')
+    context = ("./Certificates/recipe-certificate.crt",
+               "./Certificates/recipeAdvisor.key")
+    app.run(host='0.0.0.0', debug=False, ssl_context=context)
