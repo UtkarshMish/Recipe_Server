@@ -15,7 +15,7 @@ dnspython==1.16.0
 docutils==0.15.2
 feedparser==5.2.1
 Flask==1.1.1
-Flask-Cors==3.0.8
+Flask-Cors==3.0.9
 future==0.18.2
 gensim==3.8.1
 idna==2.9
