@@ -1,45 +1,42 @@
 import hashlib
-import os
+from typing import Any, Dict, List, Optional
 
+from beanie.odm.documents import Document
+from flask.json import JSONEncoder
 import jwt
-import pymongo
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, jsonify, request, render_template, send_file
 from flask_cors import CORS
+from pydantic.types import Json
 from pymongo import ReturnDocument
-
+from app.models import LikedRecipe, Recipe, User, UserQuery
 from Recipe_Model import Recommender
+from app.Database import init
+from beanie import PydanticObjectId
 
-# import json
-
-app = Flask(__name__)
 load_dotenv(find_dotenv())
 
-KEY = os.getenv("KEY")
-PASSWORD = os.getenv("PASSWORD")
-HOST = os.getenv("HOST")
-client = pymongo.MongoClient(
-    f"mongodb+srv://{KEY}:{PASSWORD}@{HOST}/test?retryWrites=true&w=majority")
-db = client["Recipe"]
-user = db["Users"]
-Cuisines = db["Cuisines"]
+
+class JSONEncoderImproved(JSONEncoder):
+    '''
+        Used to Properly parse ObjectId
+        '''
+    def default(self, obj):
+        if isinstance(obj, PydanticObjectId):
+            return str(obj)
+        elif isinstance(obj, Document):
+            return obj.dict()
+        else:
+            return JSONEncoder.default(self, obj)
+
+
+app = Flask(__name__)
+app.json_encoder = JSONEncoderImproved
+
 # Common Response
 TRUE = {"value": True}
 FALSE = {"value": False}
 EXIST = {"value": "exist"}
-RECIPE_SCHEMA = {
-    "_id": 0,
-    "id": 1,
-    "name": 1,
-    "ingredients": 1,
-    "description": 1,
-    "nutrition": 1,
-    "serving_count": 1,
-    "ratings": 1,
-    "breadcrumbs": 1,
-    "img_link": 1,
-    "total_time": 1,
-}
 
 
 def get_next_sequence(collection, name):
@@ -59,17 +56,17 @@ def get_next_sequence(collection, name):
 
 
 def get_token(users):
-    encoded_jwt = jwt.encode({
-        "password": users["password"]
-    },
+    encoded_jwt = jwt.encode({"password": users["password"]},
                              "project",
-                             algorithm="HS256").decode("UTF-8")
+                             algorithm="HS256")
 
     return encoded_jwt
 
 
-def get_recommend(cuisines, result_data):
-    recommender = Recommender(cuisines, result_data)
+def get_recommend(cuisines: List[Recipe], result_data: Optional[Dict[str,
+                                                                     Any]]):
+    recommender = Recommender([cusine.dict() for cusine in cuisines],
+                              result_data)
     return recommender.user_like_recommend()
 
 
@@ -89,237 +86,217 @@ def recipe_advisor(path=None):
     return render_template("index.html")
 
 
-@app.route("/api/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        users = dict(request.get_json())
-
-        if users["email"]:
-            users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(
-                users["password"].encode()).hexdigest()
-            result = user.find_one(users)
-            if result:
-                encoded_jwt = get_token(users)
-                return {
-                    "username": result["user_name"],
-                    "value": "true",
-                    "token": encoded_jwt,
-                }
-            else:
-                return FALSE
+@app.post("/api/login")
+async def login():
+    await init()
+    users = dict(request.get_json())
+    if users["email"]:
+        users["email"] = str(users["email"]).lower()
+        users["password"] = hashlib.sha1(
+            users["password"].encode()).hexdigest()
+        result = await User.find_one(User.email == users["email"])
+        if result and result.password == users["password"]:
+            encoded_jwt = get_token(users)
+            return {
+                "username": result.user_name,
+                "value": "true",
+                "token": encoded_jwt,
+            }
     return FALSE
 
 
-@app.route("/api/signup", methods=["GET", "POST"])
-def signup():
-    print(request.environ["REMOTE_ADDR"])
-    if request.method == "POST":
-        users = dict(request.get_json())
-        users["user_name"] = users["user_name"].capitalize()
-        if users["email"]:
-            users["email"] = str(users["email"]).lower()
-            users["password"] = hashlib.sha1(
-                users["password"].encode()).hexdigest()
-            result = user.find_one({"email": users["email"]}) or 0
-            if result != 0:
-                return EXIST
-            else:
-                encoded_jwt = get_token(users)
-                users["id"] = get_next_sequence(db.orgid_counter, 'user_id')
-                user.insert_one(users)
+@app.post("/api/signup")
+async def signup():
+    await init()
+    users = dict(request.get_json())
+    users["user_name"] = users["user_name"].capitalize()
+    if users["email"]:
+        users["email"] = str(users["email"]).lower()
+        users["password"] = hashlib.sha1(
+            users["password"].encode()).hexdigest()
+        result = await User.find_one(User.email == users["email"])
+        if result:
+            return EXIST
+        else:
+            encoded_jwt = get_token(users)
+            try:
+                await User(user_name=users["user_name"],
+                           email=users["email"],
+                           password=users["password"]).create()
                 return {
                     "username": users["user_name"],
                     "value": "success",
                     "token": encoded_jwt,
                 }
+            except Exception:
+                return {"username": users["user_name"], "value": "failed"}
     return FALSE
 
 
-@app.route("/api/verify-token", methods=["GET", "POST"])
-def check_api():
-    if request.method == "POST":
-        user_data = request.get_json()
-        token = user_data["token"]
-        if not token:
+@app.post("/api/verify-token")
+async def check_api():
+    await init()
+    user_data = request.get_json()
+    token = user_data["token"]
+    if not token:
+        return FALSE
+    else:
+        token = bytes(token, encoding="UTF-8")
+        try:
+            password: str = jwt.decode(token, "project",
+                                       algorithms=["HS256"])["password"]
+            result = await User.find_one(User.password == password)
+            return TRUE if result else FALSE
+        except Exception:
             return FALSE
-        else:
-            token = bytes(token, encoding="UTF-8")
-            try:
-                password = jwt.decode(token, "project", algorithms=["HS256"])
-            except:
-                return FALSE
-            result = user.find_one(password) or 0
-            if result != 0:
-                return TRUE
-            else:
-                return FALSE
-    return FALSE
 
 
 @app.route("/api/get-recipe/<int:page_no>", methods=["GET", "POST"])
-def get_cuisine(page_no=0):
+async def get_cuisine(page_no=0):
+    await init()
     page_no = int(page_no)
     if page_no > 0:
         page_size = 6
         limit = page_size * page_no
-        recipe_data = [
-            recipe for recipe in Cuisines.find(
-                projection=RECIPE_SCHEMA).skip(limit -
-                                               page_size).limit(page_size)
-        ]
-        recipe_data.append(
-            {"totalSize": Cuisines.estimated_document_count() + 1})
+        recipe_data = await Recipe.all().skip(limit - page_size).limit(
+            page_size).to_list()
+
+        recipe_data.append({"totalSize": await Recipe.count() + 1})
         return jsonify(recipe_data)
     return FALSE
 
 
-@app.route("/api/recipe/<int:recipe_id>", methods=["GET", "POST"])
-def get_recipe(recipe_id=0):
-    recipe_id = int(recipe_id)
-    if recipe_id > 0:
-        recipe_data = Cuisines.find_one({"id": recipe_id},
-                                        projection=RECIPE_SCHEMA)
-        if recipe_data:
-            return jsonify(recipe_data)
+@app.get("/api/recipe/<string:recipe_id>")
+async def get_recipe(recipe_id):
+    await init()
+    recipe_data = await Recipe.get(recipe_id)
+    return jsonify(recipe_data) if recipe_data else FALSE
+
+
+@app.post("/api/search")
+async def search():
+    await init()
+    query_request = request.get_json()
+    if query_request:
+        page_no = query_request['page_no']
+        page_size = 6
+        limit = page_size * page_no
+        query_value = "".join(
+            [ch for ch in query_request['query'] if ch.isalpha() or ch == ' '])
+        query_result = [
+            cuisine for cuisine in await Recipe.find({
+                'name': {
+                    '$regex': f".*{query_value}.*",
+                    '$options': 'i'
+                }
+            }).skip(limit - page_size).limit(page_size).to_list()
+        ]
+        query_result.append({
+            "totalSize":
+            await Recipe.find({
+                'name': {
+                    '$regex': f".*{query_value}.*",
+                    '$options': 'i'
+                }
+            }).count()
+        })
+        return jsonify(query_result)
     return FALSE
 
 
-@app.route("/api/search", methods=["GET", "POST"])
-def search():
-    if request.method == "POST":
-        query_request = request.get_json() or 0
-        if query_request != 0:
-            page_no = query_request['page_no']
-            page_size = 6
-            limit = page_size * page_no
-            query_value = "".join([
-                ch for ch in query_request['query']
-                if ch.isalpha() or ch == ' '
-            ])
-            query_result = [
-                cuisine for cuisine in Cuisines.find(
-                    {
-                        'name': {
-                            '$regex': f".*{query_value}.*",
-                            '$options': 'i'
-                        }
-                    },
-                    projection=RECIPE_SCHEMA).skip(limit -
-                                                   page_size).limit(page_size)
-            ]
-            query_result.append({
-                "totalSize":
-                Cuisines.find({
-                    'name': {
-                        '$regex': f".*{query_value}.*",
-                        '$options': 'i'
-                    }
-                }).count()
-            })
-            return jsonify(query_result)
-        return TRUE
+@app.post("/api/predict")
+async def predict_recipe():
+    await init()
+    data = request.get_json()
+    query = data['queryString']
+    if len(query) > 0:
+        query = " ".join(query).lower()
+        cuisine_list = [
+            recipe.dict() for recipe in await Recipe.all().to_list()
+        ]
+        recipe = Recommender(cuisine_list, query)
+        predicted_id = recipe.guide_predictor()
+        recipe_data = await Recipe.find({
+            "_id": {
+                "$in": predicted_id
+            }
+        }).to_list()
+        return jsonify(recipe_data)
     return FALSE
 
 
-@app.route("/api/predict", methods=["GET", "POST"])
-def predict_recipe():
-    if request.method == 'POST':
-        data = request.get_json()
-        query = data['queryString']
-        if len(query) > 0:
-            query = " ".join(query).lower()
-            cuisine_list = [
-                cuisine for cuisine in Cuisines.find(projection=RECIPE_SCHEMA)
-            ]
-            recipe = Recommender(cuisine_list, query)
-            predicted_id = recipe.guide_predictor()
-            recipe_data = [
-                recipe for recipe in Cuisines.find(
-                    {"id": {
-                        "$in": predicted_id
-                    }}, projection=RECIPE_SCHEMA)
-            ]
-            if len(recipe_data) > 0:
-                return jsonify(recipe_data)
-    return FALSE
+@app.post("/api/submit-query")
+async def submit_query():
+    await init()
+    data = request.get_json()
+    result = await UserQuery(data).save()
+    return TRUE if result is not None else FALSE
 
 
-@app.route("/api/submit-query", methods=["GET", "POST"])
-def submit_query():
-    if request.method == 'POST':
-        data = request.get_json()
-        result = db['UserQuery'].insert_one(data)
-        if result != None:
-            return TRUE
-    return FALSE
-
-
-@app.route("/api/userLikings", methods=["GET", "POST"])
-def user_likes():
-    if request.method == "POST":
-        user_data = request.get_json()
-        password = user_data["token"]
-        if not password:
-            return FALSE
-        else:
+@app.post("/api/userLikings")
+async def user_likes():
+    await init()
+    user_data: Json = request.get_json()
+    password = user_data["token"]
+    if password:
+        try:
             token = bytes(password, encoding="UTF-8")
-            try:
-                password = jwt.decode(token, "project", algorithms=["HS256"])
-            except:
-                return FALSE
-            result = user.find_one({
-                "user_name": user_data['user'],
-                "password": password['password']
-            }) or 0
-            if result != 0 and user_data['recipe_id'] is None:
-                result_data = db['LikedRecipe'].find_one(
-                    {"user_id": result['id']},
-                    projection={
-                        '_id': False,
-                        'liked_recipe': True
-                    })
-                if not result_data:
-                    result_data = {
-                        'id': result['id'],
-                        'liked_recipe': []
-                    }
-                if result_data is not None and user_data['recommendation']:
-                    result_data = liked_response(result_data)
+            password = jwt.decode(token, "project", algorithms=["HS256"])
+            result = await check_if_user_valid(user_data, password)
+            if result and user_data['recipe_id'] is None:
+                result_data = (await LikedRecipe.find_one(
+                    LikedRecipe.user_id == result.id))
+                result_data = result_data.dict() if result_data else {
+                    'id': result.id,
+                    'liked_recipes': []
+                }
+                if user_data['recommendation']:
+                    result_data = await liked_response(result_data)
                     return result_data
                 elif result_data:
                     return result_data
-                else:
-                    return FALSE
-            if result != 0:
-                operation = '$push' if user_data['liked'] else '$pull'
-                success = db['LikedRecipe'].find_one_and_update(
-                    {"user_id": result['id']},
-                    {operation: {
-                        'liked_recipe': user_data['recipe_id']
-                    }},
-                    return_document=ReturnDocument.AFTER)
-                if not success:
-                    success = db['LikedRecipe'].insert_one({
-                        "user_id":
-                        result['id'],
-                        "liked_recipe": [int(user_data['recipe_id'])]
-                    })
-                if success:
-                    return TRUE
-            else:
-                return FALSE
+            return TRUE if await toggle_liked_recipes(user_data,
+                                                      result) else FALSE
+        except Exception as e:
+            print(e)
+            return FALSE
     return FALSE
 
 
-def liked_response(result_data):
-    cuisines = list(Cuisines.find(projection={'_id': False}).sort('id'))
-    liked = result_data['liked_recipe'] or []
-    result_data['liked_recipe'] = [
-        recipe for recipe in cuisines if recipe['id'] in liked
+async def toggle_liked_recipes(user_data, result):
+    operation = '$push' if user_data['liked'] else '$pull'
+    success = await LikedRecipe.find_one(
+        {"user_id": result['id']},
+        {operation: {
+            'liked_recipe': user_data['recipe_id']
+        }})
+    if not success:
+        success = await LikedRecipe.insert_one({
+            "user_id":
+            result['id'],
+            "liked_recipe": [user_data['recipe_id']]
+        })
+
+    return success
+
+
+async def check_if_user_valid(user_data, password):
+    return await User.find_one({
+        "user_name": user_data['user'],
+        "password": password['password']
+    })
+
+
+async def liked_response(result_data: Dict[str, Any]) -> Dict[str, Any]:
+    result: Dict[str, Any] = dict()
+    cuisines = await Recipe.all().sort('id').to_list()
+    liked = result_data["liked_recipes"]
+    result_data["liked_recipes"] = [
+        recipe for recipe in cuisines if recipe.id in liked
     ]
-    result_data['recommendations'] = get_recommend(cuisines, liked)
-    return result_data
+    result.update(result_data)
+    result['recommendations'] = get_recommend(cuisines, liked)
+    return result
 
 
 if __name__ == "__main__":
