@@ -1,10 +1,5 @@
 # Created by https://www.toptal.com/developers/gitignore/api/flask
 # Edit at https://www.toptal.com/developers/gitignore?templates=flask
-<<<<<<< HEAD
-.vscode
-Certificates
-.idea
-=======
 recipe-venv
 recipe-venv/**/*
 __pycache__
@@ -12,7 +7,6 @@ __pycache__
 .idea
 .vscode
 Certificates
->>>>>>> heroku
 ### Flask ###
 instance/*
 !instance/.gitignore
