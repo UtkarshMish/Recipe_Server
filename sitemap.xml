@@ -11,7 +11,11 @@
     </url>
 
     <url>
+<<<<<<< HEAD
         <loc>http://recipe-advisor.team/browse</loc>
+=======
+        <loc>http://recipe-advisor.team/browse/</loc>
+>>>>>>> heroku
         <changefreq>weekly</changefreq>
     </url>
 
@@ -19,6 +23,13 @@
         <loc>http://recipe-advisor.team/guide</loc>
         <changefreq>weekly</changefreq>
     </url>
+<<<<<<< HEAD
 
+=======
+    <url>
+        <loc>http://recipe-advisor.team/browse/recipe/</loc>
+        <changefreq>weekly</changefreq>
+    </url>
+>>>>>>> heroku
 </urlset>
 
