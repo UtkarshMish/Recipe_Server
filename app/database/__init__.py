@@ -16,3 +16,6 @@ async def init():
     # Init beanie with the Product document class
     await init_beanie(database=client.Recipe,
                       document_models=[User, UserQuery, LikedRecipe, Recipe])
+
+
+__all__ = (init.__name__, )
