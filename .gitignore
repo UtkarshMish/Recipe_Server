@@ -2,11 +2,13 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=flask
 recipe-venv
 recipe-venv/**/*
+venv-recipe
 __pycache__
 .github
 .idea
 .vscode
 Certificates
+
 ### Flask ###
 instance/*
 !instance/.gitignore

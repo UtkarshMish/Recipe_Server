@@ -27,7 +27,7 @@ def vectorizer(matrix):
                             lowercase=True,
                             analyzer="word")
     matrix = label.fit_transform(matrix)
-    feature_names = label.get_feature_names()  # TO GET FEATURE NAMES
+    feature_names = label.get_feature_names_out()  # TO GET FEATURE NAMES
     matrix = matrix.todense()
     matrix = matrix.tolist()
     return matrix, feature_names, label
