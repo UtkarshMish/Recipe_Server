@@ -34,7 +34,7 @@ jaraco.functools==3.3.0
 jaraco.text==3.5.0
 Jinja2==3.0.1
 jmespath==0.10.0
-joblib==1.0.1
+joblib==1.2.0
 lazy-object-proxy==1.6.0
 lightfm==1.16
 lxml==4.6.3
